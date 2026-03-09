@@ -1,4 +1,5 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import type { Area } from './configStore';
 
 interface CharInfo {
   char: string;
@@ -7,22 +8,13 @@ interface CharInfo {
   fontSize: number;
 }
 
-interface AreaDef {
-  key: string;
-  page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface PageInfo {
+export interface PageInfo {
   width: number;
   height: number;
   chars: CharInfo[];
 }
 
-async function extractPageInfo(doc: PDFDocumentProxy): Promise<PageInfo[]> {
+export async function extractPageInfo(doc: PDFDocumentProxy): Promise<PageInfo[]> {
   const pages: PageInfo[] = [];
 
   for (let i = 1; i <= doc.numPages; i++) {
@@ -96,7 +88,7 @@ function extractTextFromArea(pageInfo: PageInfo, area: { x: number; y: number; w
   return lines.map(l => l.trim()).join('\n').trim();
 }
 
-export async function extractFromAreas(doc: PDFDocumentProxy, areas: AreaDef[]): Promise<Record<string, string>> {
+export async function extractFromAreas(doc: PDFDocumentProxy, areas: Area[]): Promise<Record<string, string>> {
   const pages = await extractPageInfo(doc);
   const result: Record<string, string> = {};
 
@@ -113,8 +105,7 @@ export async function extractFromAreas(doc: PDFDocumentProxy, areas: AreaDef[]):
   return result;
 }
 
-export async function extractSingleArea(doc: PDFDocumentProxy, area: { page: number; x: number; y: number; width: number; height: number }): Promise<string> {
-  const pages = await extractPageInfo(doc);
+export function extractSingleAreaFromPages(pages: PageInfo[], area: { page: number; x: number; y: number; width: number; height: number }): string {
   const pageIndex = area.page - 1;
 
   if (pageIndex < 0 || pageIndex >= pages.length) {

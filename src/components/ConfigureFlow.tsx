@@ -5,7 +5,7 @@ import { PdfDropzone } from './PdfDropzone';
 import { PdfViewer } from './PdfViewer';
 import type { Rect } from './PdfViewer';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { extractSingleArea } from '../lib/pdfExtractor';
+import { extractPageInfo, extractSingleAreaFromPages, type PageInfo } from '../lib/pdfExtractor';
 import { createConfig, updateConfig, getConfig } from '../lib/configStore';
 
 interface Props {
@@ -24,7 +24,7 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
   const [totalPages, setTotalPages] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
+  const pagesRef = useRef<PageInfo[] | null>(null);
 
   // Load existing config when editing
   useEffect(() => {
@@ -46,38 +46,29 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
     }
   }, [editConfigId]);
 
-  const runPreview = useCallback(async (doc: PDFDocumentProxy, rect: { id: string; page: number; x: number; y: number; width: number; height: number }) => {
-    try {
-      const text = await extractSingleArea(doc, rect);
-      setRects(prev => prev.map(r => r.id === rect.id ? { ...r, previewText: text } : r));
-    } catch {
-      setRects(prev => prev.map(r => r.id === rect.id ? { ...r, previewText: 'ERROR: preview failed' } : r));
-    }
-  }, []);
-
-  const handleDocLoaded = useCallback((doc: PDFDocumentProxy) => {
-    pdfDocRef.current = doc;
+  const handleDocLoaded = useCallback(async (doc: PDFDocumentProxy) => {
+    const pages = await extractPageInfo(doc);
+    pagesRef.current = pages;
     // Run previews for all existing rects
     setRects(prev => {
-      for (const rect of prev) {
-        runPreview(doc, rect);
-      }
-      return prev;
+      return prev.map(rect => ({
+        ...rect,
+        previewText: extractSingleAreaFromPages(pages, rect),
+      }));
     });
-  }, [runPreview]);
+  }, []);
 
   const handleRectDrawn = useCallback(
-    async (rect: Omit<Rect, 'id' | 'key' | 'previewText'>) => {
+    (rect: Omit<Rect, 'id' | 'key' | 'previewText'>) => {
       const id = crypto.randomUUID();
-      const newRect: Rect = { ...rect, id, key: '', previewText: undefined };
+      const previewText = pagesRef.current
+        ? extractSingleAreaFromPages(pagesRef.current, { ...rect, page: rect.page })
+        : undefined;
+      const newRect: Rect = { ...rect, id, key: '', previewText };
       setRects(prev => [...prev, newRect]);
       setSelectedRectId(id);
-
-      if (pdfDocRef.current) {
-        runPreview(pdfDocRef.current, { id, ...rect });
-      }
     },
-    [runPreview],
+    [],
   );
 
   const handleKeyChange = useCallback((id: string, key: string) => {
@@ -122,8 +113,8 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
         createConfig(identifier.trim(), areas);
       }
       onDone();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
     }

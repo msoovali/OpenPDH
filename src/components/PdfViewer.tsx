@@ -25,7 +25,7 @@ interface Props {
   totalPages: number;
   onPageChange: (page: number) => void;
   onTotalPages: (count: number) => void;
-  onRectDrawn: (rect: Omit<Rect, 'id' | 'key' | 'previewText'>) => void;
+  onRectDrawn?: (rect: Omit<Rect, 'id' | 'key' | 'previewText'>) => void;
   onRectClick?: (rect: Rect) => void;
   selectedRectId?: string | null;
   onDocLoaded?: (doc: pdfjsLib.PDFDocumentProxy) => void;
@@ -48,7 +48,7 @@ export function PdfViewer({
   const [drawing, setDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number } | null>(null);
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [rotation, setRotation] = useState(0);
 
   // Load PDF document
@@ -62,6 +62,7 @@ export function PdfViewer({
       onDocLoaded?.(doc);
     };
     loadPdf();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload when file changes, callbacks are stable
   }, [file]);
 
   // Render current page
@@ -74,7 +75,7 @@ export function PdfViewer({
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       const ctx = canvas.getContext('2d')!;
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
     };
     renderPage();
   }, [pdfDoc, currentPage, rotation]);
@@ -117,7 +118,7 @@ export function PdfViewer({
 
     // Minimum size threshold
     if (width > 1 && height > 1) {
-      onRectDrawn({ page: currentPage, x, y, width, height });
+      onRectDrawn?.({ page: currentPage, x, y, width, height });
     }
 
     setDrawing(false);

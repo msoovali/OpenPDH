@@ -5,6 +5,7 @@ import { PdfDropzone } from './PdfDropzone';
 import * as pdfjsLib from 'pdfjs-dist';
 import { listConfigs, getConfig } from '../lib/configStore';
 import { extractFromAreas } from '../lib/pdfExtractor';
+import { downloadJSON } from '../lib/download';
 import { PdfViewer } from './PdfViewer';
 import type { Rect } from './PdfViewer';
 
@@ -55,8 +56,8 @@ export function ReadFlow() {
       const data = await extractFromAreas(doc, config.areas);
       await doc.destroy();
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Extraction failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Extraction failed');
     } finally {
       setLoading(false);
     }
@@ -64,14 +65,8 @@ export function ReadFlow() {
 
   const handleDownload = () => {
     if (!result) return;
-    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
     const config = selectedConfigId ? getConfig(selectedConfigId) : null;
-    a.download = `${config?.identifier ?? 'extracted-data'}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadJSON(JSON.stringify(result, null, 2), `${config?.identifier ?? 'extracted-data'}.json`);
   };
 
   const handleFileSelect = (f: File | null) => {
@@ -180,7 +175,6 @@ export function ReadFlow() {
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
                 onTotalPages={setTotalPages}
-                onRectDrawn={() => {}}
                 selectedRectId={null}
               />
             </Paper>

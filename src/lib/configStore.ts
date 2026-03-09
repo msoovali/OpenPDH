@@ -67,12 +67,12 @@ export function deleteConfig(id: string): void {
 export function exportConfig(id: string): string {
   const config = getConfig(id);
   if (!config) throw new Error('Configuration not found');
-  const { id: _id, ...data } = config;
-  return JSON.stringify(data, null, 2);
+  const { identifier, areas } = config;
+  return JSON.stringify({ identifier, areas }, null, 2);
 }
 
 export function exportAllConfigs(): string {
-  const configs = loadAll().map(({ id: _id, ...data }) => data);
+  const configs = loadAll().map(({ identifier, areas }) => ({ identifier, areas }));
   return JSON.stringify(configs, null, 2);
 }
 
@@ -101,7 +101,6 @@ export function parseImport(json: string): { items: ImportItem[]; conflicts: str
 
 export function importConfigs(items: ImportItem[]): number {
   const configs = loadAll();
-  let imported = 0;
 
   for (const item of items) {
     const existing = configs.find(c => c.identifier === item.identifier);
@@ -110,9 +109,8 @@ export function importConfigs(items: ImportItem[]): number {
     } else {
       configs.push({ id: crypto.randomUUID(), identifier: item.identifier, areas: item.areas });
     }
-    imported++;
   }
 
   saveAll(configs);
-  return imported;
+  return items.length;
 }

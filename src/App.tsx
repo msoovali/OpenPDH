@@ -6,7 +6,7 @@ import { ConfigureFlow } from './components/ConfigureFlow';
 import { ReadFlow } from './components/ReadFlow';
 import { ConfigList } from './components/ConfigList';
 
-type View = 'configure' | 'read' | 'configs';
+export type View = 'configure' | 'read' | 'configs';
 
 export default function App() {
   const [view, setView] = useState<View>('read');

@@ -1,25 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Stack, Card, Group, Text, Button, CloseButton, Notification, Paper, Modal } from '@mantine/core';
 import { listConfigs, deleteConfig, exportConfig, exportAllConfigs, parseImport, importConfigs } from '../lib/configStore';
 import type { ImportItem } from '../lib/configStore';
+import { downloadJSON } from '../lib/download';
 
 interface Props {
   onEdit: (id: string) => void;
   onNew: () => void;
 }
 
-function download(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export function ConfigList({ onEdit, onNew }: Props) {
-  const [configs, setConfigs] = useState<{ id: string; identifier: string }[]>([]);
+  const [configs, setConfigs] = useState(() => listConfigs());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; identifier: string } | null>(null);
@@ -27,7 +18,6 @@ export function ConfigList({ onEdit, onNew }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = () => setConfigs(listConfigs());
-  useEffect(load, []);
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
@@ -41,11 +31,11 @@ export function ConfigList({ onEdit, onNew }: Props) {
   };
 
   const handleExport = (id: string, identifier: string) => {
-    download(exportConfig(id), `${identifier}.json`);
+    downloadJSON(exportConfig(id), `${identifier}.json`);
   };
 
   const handleExportAll = () => {
-    download(exportAllConfigs(), 'openpdh-configs.json');
+    downloadJSON(exportAllConfigs(), 'openpdh-configs.json');
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
