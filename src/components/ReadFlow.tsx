@@ -4,7 +4,6 @@ import { useMediaQuery } from '@mantine/hooks';
 import { PdfDropzone } from './PdfDropzone';
 import * as pdfjsLib from 'pdfjs-dist';
 import { listConfigs, getConfig } from '../lib/configStore';
-import type { Config } from '../lib/configStore';
 import { extractFromAreas } from '../lib/pdfExtractor';
 import { PdfViewer } from './PdfViewer';
 import type { Rect } from './PdfViewer';
