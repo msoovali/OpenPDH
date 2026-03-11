@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/OPENPDH_HEADER.png" alt="OpenPDH" width="600" />
+  <img src="public/OPENPDH_logo.png" alt="OpenPDH" width="600" />
 </p>
 
 <p align="center">
