@@ -64,7 +64,10 @@ export function PdfViewer({
       onDocLoaded?.(doc);
     };
     loadPdf();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      setPdfDoc(prev => { prev?.destroy(); return null; });
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload when file changes, callbacks are stable
   }, [file]);
 

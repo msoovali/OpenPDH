@@ -45,14 +45,6 @@ export async function extractSinglePageInfo(doc: PDFDocumentProxy, pageNum: numb
   return { width: viewport.width, height: viewport.height, chars };
 }
 
-export async function extractPageInfo(doc: PDFDocumentProxy): Promise<PageInfo[]> {
-  const pages: PageInfo[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    pages.push(await extractSinglePageInfo(doc, i));
-  }
-  return pages;
-}
-
 export function extractTextFromArea(pageInfo: PageInfo, area: { x: number; y: number; width: number; height: number }): string {
   const areaLeft = (area.x / 100) * pageInfo.width;
   const areaTop = (area.y / 100) * pageInfo.height;
@@ -111,15 +103,4 @@ export async function extractFromAreas(doc: PDFDocumentProxy, areas: Area[]): Pr
   }
 
   return result;
-}
-
-export function extractSingleAreaFromPages(pages: PageInfo[], area: { page: number; x: number; y: number; width: number; height: number }): string {
-  const pageIndex = area.page - 1;
-
-  if (pageIndex < 0 || pageIndex >= pages.length) {
-    return 'ERROR: could not parse (page not found)';
-  }
-
-  const text = extractTextFromArea(pages[pageIndex], area);
-  return text || 'ERROR: could not parse';
 }

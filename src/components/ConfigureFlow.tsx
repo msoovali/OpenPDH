@@ -82,23 +82,22 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, initialFile, re
     setPayerBic(cached.payerBic);
   }, [editConfigId, cloneFromConfigId]);
 
+  const rectsRef = useRef(rects);
+  rectsRef.current = rects;
+
   const handleDocLoaded = useCallback(async (doc: PDFDocumentProxy) => {
     docRef.current = doc;
     pagesCacheRef.current = new Map();
     // Extract only pages needed for existing rects (lazy)
-    setRects(prev => {
-      const pagesNeeded = [...new Set(prev.map(r => r.page))];
-      if (pagesNeeded.length > 0) {
-        Promise.all(pagesNeeded.map(p => extractSinglePageInfo(doc, p))).then(infos => {
-          pagesNeeded.forEach((p, i) => pagesCacheRef.current.set(p, infos[i]));
-          setRects(curr => curr.map(rect => {
-            const pi = pagesCacheRef.current.get(rect.page);
-            return pi ? { ...rect, previewText: extractTextFromArea(pi, rect) } : rect;
-          }));
-        });
-      }
-      return prev;
-    });
+    const pagesNeeded = [...new Set(rectsRef.current.map(r => r.page))];
+    if (pagesNeeded.length > 0) {
+      const infos = await Promise.all(pagesNeeded.map(p => extractSinglePageInfo(doc, p)));
+      pagesNeeded.forEach((p, i) => pagesCacheRef.current.set(p, infos[i]));
+      setRects(curr => curr.map(rect => {
+        const pi = pagesCacheRef.current.get(rect.page);
+        return pi ? { ...rect, previewText: extractTextFromArea(pi, rect) } : rect;
+      }));
+    }
   }, []);
 
   const handleRectDrawn = useCallback(

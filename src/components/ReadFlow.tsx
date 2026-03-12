@@ -3,7 +3,7 @@ import { Stack, Select, Button, ActionIcon, Code, Group, Text, Notification, Pap
 import { IconArrowLeft, IconPencil, IconCopy as IconClone } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { PdfDropzone } from './PdfDropzone';
-import * as pdfjsLib from 'pdfjs-dist';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { listConfigs, getConfig } from '../lib/configStore';
 import { extractFromAreas } from '../lib/pdfExtractor';
 import { downloadJSON, downloadXML, sanitizeFilename } from '../lib/download';
@@ -30,14 +30,17 @@ export function ReadFlow({ initialConfigId, initialFile, onEditTemplate, onClone
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [rects, setRects] = useState<Rect[]>([]);
-  const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const docRef = useRef<PDFDocumentProxy | null>(null);
 
   useEffect(() => {
     setConfigs(listConfigs());
   }, []);
 
-  const handleDocLoaded = useCallback((doc: pdfjsLib.PDFDocumentProxy) => {
+  const [docReady, setDocReady] = useState(false);
+
+  const handleDocLoaded = useCallback((doc: PDFDocumentProxy) => {
     docRef.current = doc;
+    setDocReady(true);
   }, []);
 
   // Build rects from selected config areas
@@ -56,9 +59,9 @@ export function ReadFlow({ initialConfigId, initialFile, onEditTemplate, onClone
     })));
   }, [selectedConfigId]);
 
-  // Auto-extract when both file and config are selected
+  // Auto-extract when doc is loaded and config is selected
   useEffect(() => {
-    if (!file || !selectedConfigId) return;
+    if (!docReady || !selectedConfigId || !docRef.current) return;
     let cancelled = false;
     const run = async () => {
       setLoading(true);
@@ -67,16 +70,7 @@ export function ReadFlow({ initialConfigId, initialFile, onEditTemplate, onClone
       try {
         const config = getConfig(selectedConfigId);
         if (!config) throw new Error('Configuration not found');
-
-        let doc = docRef.current;
-        let ownDoc = false;
-        if (!doc) {
-          const arrayBuffer = await file.arrayBuffer();
-          doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          ownDoc = true;
-        }
-        const data = await extractFromAreas(doc, config.areas);
-        if (ownDoc) await doc.destroy();
+        const data = await extractFromAreas(docRef.current!, config.areas);
         if (!cancelled) setResult(data);
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Extraction failed');
@@ -86,7 +80,7 @@ export function ReadFlow({ initialConfigId, initialFile, onEditTemplate, onClone
     };
     run();
     return () => { cancelled = true; };
-  }, [file, selectedConfigId]);
+  }, [docReady, selectedConfigId]);
 
   const selectedConfig = useMemo(
     () => selectedConfigId ? getConfig(selectedConfigId) : null,
@@ -126,6 +120,7 @@ export function ReadFlow({ initialConfigId, initialFile, onEditTemplate, onClone
     setResult(null);
     setCurrentPage(1);
     docRef.current = null;
+    setDocReady(false);
   };
 
   return (
