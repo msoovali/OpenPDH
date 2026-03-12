@@ -67,6 +67,7 @@ Area coordinates are stored as percentages (0–100) of page dimensions, making 
 - [x] Docker deployment with nginx
 - [x] Fully client-side — no data leaves the browser
 - [x] Export extracted data as XML payment order
+- [x] Process multiple PDFs at once
 
 ## Future Roadmap
 
@@ -74,10 +75,6 @@ Area coordinates are stored as percentages (0–100) of page dimensions, making 
 - [ ] CSV/Excel export
 - [ ] Custom output templates (Mustache/Handlebars)
 - [ ] Copy extracted data to clipboard as table
-
-### Batch processing
-- [ ] Process multiple PDFs at once with combined export
-- [ ] Auto-detect matching config by signature zone
 
 ### Smarter extraction
 - [ ] Regex post-processing per field (strip currency symbols, normalize dates)

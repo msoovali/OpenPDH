@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Stack, Select, Button, ActionIcon, Code, Group, Text, Notification, Paper, Progress, Card, CloseButton, Checkbox, Tooltip, useMantineTheme } from '@mantine/core';
+import { Stack, Select, Button, ActionIcon, Code, Group, Text, Notification, Paper, Progress, Card, CloseButton, Checkbox, Tooltip, Modal, Table, ScrollArea, useMantineTheme } from '@mantine/core';
 import { IconArrowLeft, IconPencil, IconCopy as IconClone, IconAlertTriangle } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { PdfDropzone } from './PdfDropzone';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { listConfigs, getConfig } from '../lib/configStore';
 import { loadPdfDocument, extractFromAreas } from '../lib/pdfExtractor';
-import { downloadJSON, downloadXML, sanitizeFilename } from '../lib/download';
+import { downloadJSON, downloadXML, downloadCSV, buildCsv, sanitizeFilename } from '../lib/download';
 import { generatePain001, generatePain001Multi, parseDateToYMD } from '../lib/painXmlGenerator';
 import type { Pain001Transaction } from '../lib/painXmlGenerator';
 import { useFiles } from '../lib/fileStore';
@@ -112,6 +112,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
 
   const activeFile = files[activeFileIndex] ?? null;
   const [wrapInArray, setWrapInArray] = useState(false);
+  const [tableModalOpen, setTableModalOpen] = useState(false);
 
   const combinedJson = useMemo(() => {
     if (!results) return null;
@@ -125,6 +126,13 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
     const name = sanitizeFilename(selectedConfig?.identifier ?? 'extracted-data');
     const suffix = results && results.length > 1 ? `_batch_${results.length}` : '';
     downloadJSON(JSON.stringify(combinedJson, null, 2), `${name}${suffix}.json`);
+  };
+
+  const handleDownloadCsv = () => {
+    if (!results) return;
+    const name = sanitizeFilename(selectedConfig?.identifier ?? 'extracted-data');
+    const suffix = results.length > 1 ? `_batch_${results.length}` : '';
+    downloadCSV(buildCsv(results.map(r => r.data)), `${name}${suffix}.csv`);
   };
 
   const handleDownloadXml = () => {
@@ -334,6 +342,9 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
                 </Group>
                 <Group gap="xs" align="center">
                   <Text size="xs" c="dimmed">Download</Text>
+                  <Button size="compact-xs" variant="light" onClick={handleDownloadCsv}>
+                    CSV
+                  </Button>
                   <Button size="compact-xs" variant="light" onClick={handleDownloadJson}>
                     JSON
                   </Button>
@@ -343,6 +354,12 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
                     </Button>
                   )}
                 </Group>
+              </Group>
+              <Group gap="xs" align="center" justify="flex-end" mb="xs">
+                <Text size="xs" c="dimmed">View as</Text>
+                <Button size="compact-xs" variant="light" onClick={() => setTableModalOpen(true)}>
+                  Table
+                </Button>
               </Group>
               {results && results.length === 1 && (
                 <Checkbox
@@ -421,6 +438,44 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
           )}
         </div>
       )}
+      <Modal
+        opened={tableModalOpen}
+        onClose={() => setTableModalOpen(false)}
+        title="Extracted data"
+        size="90%"
+        centered
+      >
+        {results && results.length > 0 && (
+          <ScrollArea offsetScrollbars>
+            <Table striped highlightOnHover withTableBorder withColumnBorders fz="xs">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th style={{ position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'var(--mantine-color-body)' }}>Field</Table.Th>
+                  {results.map((r, i) => (
+                    <Table.Th key={i}>
+                      {results.length > 1 ? (
+                        <Text size="xs" truncate style={{ maxWidth: 200 }}>{r.filename}</Text>
+                      ) : 'Value'}
+                    </Table.Th>
+                  ))}
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {Object.keys(results[0].data).map(key => (
+                  <Table.Tr key={key}>
+                    <Table.Td fw={600} style={{ whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, backgroundColor: 'var(--mantine-color-body)' }}>{key}</Table.Td>
+                    {results.map((r, i) => (
+                      <Table.Td key={i} style={{ whiteSpace: 'pre-line' }}>
+                        {r.data[key] || <Text size="xs" c="dimmed" fs="italic">empty</Text>}
+                      </Table.Td>
+                    ))}
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+        )}
+      </Modal>
     </Stack>
   );
 }
