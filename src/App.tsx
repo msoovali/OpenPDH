@@ -94,7 +94,7 @@ export default function App() {
   };
 
   return (
-    <MantineProvider>
+    <MantineProvider defaultColorScheme="light">
       <FileStoreContext value={fileStore}>
         <Layout onNavigate={navigate}>
           {view === 'configure' && (

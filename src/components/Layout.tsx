@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AppShell, Group, Text, Modal, Stack, Anchor, ActionIcon } from '@mantine/core';
+import { AppShell, Group, Text, Modal, Stack, Anchor, ActionIcon, useMantineColorScheme } from '@mantine/core';
 import type { ReactNode } from 'react';
+import { IconSun, IconMoon } from '@tabler/icons-react';
 import type { View } from '../App';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 
 export function Layout({ children, onNavigate }: Props) {
   const [contactOpen, setContactOpen] = useState(false);
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   return (
     <AppShell header={{ height: 60 }} footer={{ height: 40 }} padding="md">
@@ -18,10 +20,18 @@ export function Layout({ children, onNavigate }: Props) {
           <img
             src="/OPENPDH_HEADER.png"
             alt="OpenPDH"
-            style={{ height: 36, cursor: 'pointer', flexShrink: 0 }}
+            style={{ height: 36, cursor: 'pointer', flexShrink: 0, filter: colorScheme === 'dark' ? 'brightness(0) invert(1)' : undefined }}
             onClick={() => onNavigate('configs')}
           />
-          <div />
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="lg"
+            onClick={() => setColorScheme(colorScheme === 'dark' ? 'light' : 'dark')}
+            aria-label="Toggle color scheme"
+          >
+            {colorScheme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+          </ActionIcon>
         </Group>
       </AppShell.Header>
 
