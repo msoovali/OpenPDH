@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Stack, Select, Button, Code, Group, Text, Notification, Paper, useMantineTheme } from '@mantine/core';
+import { Stack, Select, Button, ActionIcon, Code, Group, Text, Notification, Paper, Loader, useMantineTheme } from '@mantine/core';
+import { IconArrowLeft, IconPencil, IconCopy as IconClone } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { PdfDropzone } from './PdfDropzone';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -10,12 +11,19 @@ import { generatePain001, parseDateToYMD } from '../lib/painXmlGenerator';
 import { PdfViewer } from './PdfViewer';
 import type { Rect } from './PdfViewer';
 
-export function ReadFlow() {
+interface Props {
+  initialConfigId?: string | null;
+  initialFile?: File | null;
+  onEditTemplate?: (id: string, file: File | null) => void;
+  onCloneEditTemplate?: (id: string, file: File | null) => void;
+}
+
+export function ReadFlow({ initialConfigId, initialFile, onEditTemplate, onCloneEditTemplate }: Props) {
   const theme = useMantineTheme();
   const isSmall = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
   const [configs, setConfigs] = useState<{ id: string; identifier: string }[]>([]);
-  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(initialConfigId ?? null);
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [result, setResult] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +40,8 @@ export function ReadFlow() {
     docRef.current = doc;
   }, []);
 
-  // Build rects from selected config areas, clear previous result
+  // Build rects from selected config areas
   useEffect(() => {
-    setResult(null);
     if (!selectedConfigId) { setRects([]); return; }
     const config = getConfig(selectedConfigId);
     if (!config) { setRects([]); return; }
@@ -49,31 +56,37 @@ export function ReadFlow() {
     })));
   }, [selectedConfigId]);
 
-  const handleExtract = async () => {
+  // Auto-extract when both file and config are selected
+  useEffect(() => {
     if (!file || !selectedConfigId) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const config = getConfig(selectedConfigId);
-      if (!config) throw new Error('Configuration not found');
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      setResult(null);
+      try {
+        const config = getConfig(selectedConfigId);
+        if (!config) throw new Error('Configuration not found');
 
-      let doc = docRef.current;
-      let ownDoc = false;
-      if (!doc) {
-        const arrayBuffer = await file.arrayBuffer();
-        doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        ownDoc = true;
+        let doc = docRef.current;
+        let ownDoc = false;
+        if (!doc) {
+          const arrayBuffer = await file.arrayBuffer();
+          doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          ownDoc = true;
+        }
+        const data = await extractFromAreas(doc, config.areas);
+        if (ownDoc) await doc.destroy();
+        if (!cancelled) setResult(data);
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Extraction failed');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      const data = await extractFromAreas(doc, config.areas);
-      if (ownDoc) await doc.destroy();
-      setResult(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Extraction failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [file, selectedConfigId]);
 
   const selectedConfig = useMemo(
     () => selectedConfigId ? getConfig(selectedConfigId) : null,
@@ -116,32 +129,55 @@ export function ReadFlow() {
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" style={{ maxWidth: 1200, marginInline: 'auto' }}>
       <Paper shadow="xs" p="sm" radius="md">
-        <Group gap="sm" wrap="wrap">
-          <Select
-            placeholder="Choose configuration"
-            data={configs.map(c => ({ value: c.id, label: c.identifier }))}
-            value={selectedConfigId}
-            onChange={setSelectedConfigId}
-            size="xs"
-            style={{ flex: '1 1 180px', maxWidth: 280 }}
-          />
+        <Group gap="sm" wrap="wrap" justify="space-between">
+          <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+            <ActionIcon variant="subtle" size="sm" onClick={() => history.back()} title="Back" style={{ flexShrink: 0 }}>
+              <IconArrowLeft size={16} />
+            </ActionIcon>
+            <PdfDropzone
+              file={file}
+              label="Select or drop PDF"
+              onFileSelect={handleFileSelect}
+            />
 
-          <PdfDropzone
-            file={file}
-            label="Select or drop PDF"
-            onFileSelect={handleFileSelect}
-          />
+            <Select
+              placeholder="Choose template"
+              data={configs.map(c => ({ value: c.id, label: c.identifier }))}
+              value={selectedConfigId}
+              onChange={setSelectedConfigId}
+              size="xs"
+              style={{ flex: '1 1 120px', maxWidth: 280, minWidth: 0 }}
+            />
 
-          <Button
-            size="xs"
-            onClick={handleExtract}
-            loading={loading}
-            disabled={!file || !selectedConfigId}
-          >
-            Extract data
-          </Button>
+            {loading && <Loader size="xs" style={{ flexShrink: 0 }} />}
+          </Group>
+
+          {selectedConfigId && (
+            <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+              {onEditTemplate && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconPencil size={14} />}
+                  onClick={() => onEditTemplate(selectedConfigId, file)}
+                >
+                  Edit template
+                </Button>
+              )}
+              {onCloneEditTemplate && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconClone size={14} />}
+                  onClick={() => onCloneEditTemplate(selectedConfigId, file)}
+                >
+                  Clone & edit
+                </Button>
+              )}
+            </Group>
+          )}
         </Group>
       </Paper>
 
@@ -151,14 +187,13 @@ export function ReadFlow() {
             <Text size="sm" fw={500}>How to extract data from a document</Text>
             {configs.length === 0 && (
               <Text size="sm" c="dimmed">
-                You don't have any configurations yet. Go to Configurations to create one by uploading
+                You don't have any templates yet. Create one by uploading
                 a sample PDF and drawing areas you want to extract.
               </Text>
             )}
-            <Text size="sm" c="dimmed">1. Select a configuration that matches your document layout</Text>
-            <Text size="sm" c="dimmed">2. Select or drop a PDF file</Text>
-            <Text size="sm" c="dimmed">3. Click "Extract data" to get structured JSON output</Text>
-            <Text size="sm" c="dimmed">4. Download as JSON or, if the configuration has a payment order enabled, as a Pain.001 XML payment order</Text>
+            <Text size="sm" c="dimmed">1. Select or drop a PDF file</Text>
+            <Text size="sm" c="dimmed">2. Select a template that matches your document layout</Text>
+            <Text size="sm" c="dimmed">3. Download as JSON or, if the template has a payment order enabled, as a Pain.001 XML payment order</Text>
             <Text size="xs" c="dimmed" fs="italic" mt="xs">
               Your documents never leave your browser — all processing happens locally on your device.
             </Text>

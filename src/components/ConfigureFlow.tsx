@@ -1,26 +1,30 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Button, TextInput, Stack, Paper, Text, Group, Card, CloseButton, Code, Notification, useMantineTheme, Checkbox, Select } from '@mantine/core';
+import { Button, ActionIcon, TextInput, Stack, Paper, Text, Group, Card, CloseButton, Code, Notification, useMantineTheme, Checkbox, Select, Modal } from '@mantine/core';
+import { IconArrowLeft } from '@tabler/icons-react';
 import { useMediaQuery } from '@mantine/hooks';
 import { PdfDropzone } from './PdfDropzone';
 import { PdfViewer } from './PdfViewer';
 import type { Rect } from './PdfViewer';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { extractSinglePageInfo, extractTextFromArea, type PageInfo } from '../lib/pdfExtractor';
-import { createConfig, updateConfig, getConfig, loadPayerDetails, savePayerDetails } from '../lib/configStore';
+import { createConfig, updateConfig, getConfig, deleteConfig, listConfigs, loadPayerDetails, savePayerDetails } from '../lib/configStore';
 import type { PaymentOrderFieldMappings } from '../lib/configStore';
 
 interface Props {
   editConfigId: string | null;
-  onDone: () => void;
+  cloneFromConfigId?: string | null;
+  initialFile?: File | null;
+  returnToRead?: boolean;
+  onDone: (savedConfigId?: string, backToRead?: boolean) => void;
 }
 
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK'];
 
-export function ConfigureFlow({ editConfigId, onDone }: Props) {
+export function ConfigureFlow({ editConfigId, cloneFromConfigId, initialFile, returnToRead, onDone }: Props) {
   const theme = useMantineTheme();
   const isSmall = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
   const [identifier, setIdentifier] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [rects, setRects] = useState<Rect[]>([]);
   const [selectedRectId, setSelectedRectId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,12 +47,13 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
     referenceNumber: '', paymentDescription: '', dueDate: '',
   });
 
-  // Load existing config when editing, or prefill payer details for new
+  // Load existing config when editing or cloning, or prefill payer details for new
   useEffect(() => {
-    if (editConfigId) {
-      const config = getConfig(editConfigId);
+    const sourceId = editConfigId ?? cloneFromConfigId;
+    if (sourceId) {
+      const config = getConfig(sourceId);
       if (config) {
-        setIdentifier(config.identifier);
+        setIdentifier(cloneFromConfigId ? `${config.identifier} (copy)` : config.identifier);
         setRects(
           config.areas.map(a => ({
             id: crypto.randomUUID(),
@@ -75,7 +80,7 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
     setPayerName(cached.payerName);
     setPayerIban(cached.payerIban);
     setPayerBic(cached.payerBic);
-  }, [editConfigId]);
+  }, [editConfigId, cloneFromConfigId]);
 
   const handleDocLoaded = useCallback(async (doc: PDFDocumentProxy) => {
     docRef.current = doc;
@@ -127,21 +132,15 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
     if (selectedRectIdRef.current === id) setSelectedRectId(null);
   }, []);
 
-  const handleSave = async () => {
-    if (!identifier.trim()) {
-      setError('Please enter an identifier');
-      return;
-    }
-    const unnamed = rects.filter(r => !r.key.trim());
-    if (unnamed.length > 0) {
-      setError('All areas must have a key identifier');
-      return;
-    }
-    if (rects.length === 0) {
-      setError('Please draw at least one area');
-      return;
-    }
+  const [overwriteTarget, setOverwriteTarget] = useState<{ id: string; name: string } | null>(null);
+  const pendingSaveAndReadRef = useRef(false);
 
+  const findConflict = () => {
+    const name = identifier.trim();
+    return listConfigs().find(c => c.identifier === name && c.id !== editConfigId) ?? null;
+  };
+
+  const executeSave = (overwrite = false) => {
     setSaving(true);
     setError(null);
     try {
@@ -162,20 +161,52 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
         fieldMappings,
       } : undefined;
 
+      if (overwrite && overwriteTarget) {
+        deleteConfig(overwriteTarget.id);
+      }
+
+      let savedId: string;
       if (editConfigId) {
         updateConfig(editConfigId, identifier.trim(), areas, paymentOrder);
+        savedId = editConfigId;
       } else {
-        createConfig(identifier.trim(), areas, paymentOrder);
+        const created = createConfig(identifier.trim(), areas, paymentOrder);
+        savedId = created.id;
       }
 
       if (paymentEnabled) {
         savePayerDetails({ payerName: payerName.trim(), payerIban: payerIban.trim(), payerBic: payerBic.trim() });
       }
-      onDone();
+      setOverwriteTarget(null);
+      onDone(savedId, pendingSaveAndReadRef.current);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSave = (saveAndRead = false) => {
+    if (!identifier.trim()) {
+      setError('Please enter an identifier');
+      return;
+    }
+    const unnamed = rects.filter(r => !r.key.trim());
+    if (unnamed.length > 0) {
+      setError('All areas must have a key identifier');
+      return;
+    }
+    if (rects.length === 0) {
+      setError('Please draw at least one area');
+      return;
+    }
+
+    pendingSaveAndReadRef.current = saveAndRead;
+    const conflict = findConflict();
+    if (conflict) {
+      setOverwriteTarget({ id: conflict.id, name: conflict.identifier });
+    } else {
+      executeSave();
     }
   };
 
@@ -186,52 +217,86 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
   const updateMapping = (field: keyof PaymentOrderFieldMappings, value: string | null) =>
     setFieldMappings(prev => ({ ...prev, [field]: value ?? '' }));
 
+  const saveDisabled = rects.length === 0 || !identifier.trim() || rects.some(r => !r.key.trim()) ||
+    (paymentEnabled && (
+      !payerName.trim() || !payerIban.trim() || !payerBic.trim() ||
+      !fieldMappings.beneficiaryName || !fieldMappings.beneficiaryIban ||
+      !fieldMappings.amount || !fieldMappings.paymentDescription || !fieldMappings.dueDate
+    ));
+
+  const handleFileSelect = (f: File | null) => {
+    setFile(f);
+    setSelectedRectId(null);
+    setCurrentPage(1);
+  };
+
+  const backButton = (
+    <ActionIcon variant="subtle" size="sm" onClick={() => history.back()} title="Back" style={{ flexShrink: 0 }}>
+      <IconArrowLeft size={16} />
+    </ActionIcon>
+  );
+
+  const pdfDropzone = (
+    <PdfDropzone file={file} label="Select or drop PDF" onFileSelect={handleFileSelect} />
+  );
+
+  const nameInput = (
+    <TextInput
+      placeholder="Template name"
+      value={identifier}
+      onChange={e => setIdentifier(e.currentTarget.value)}
+      size="xs"
+      required
+      style={isSmall ? { flex: 1, minWidth: 0 } : { flex: '1 1 180px', maxWidth: 280 }}
+    />
+  );
+
+  const paymentCheckbox = (
+    <Checkbox
+      size="xs"
+      label="Payment order (Pain.001)"
+      checked={paymentEnabled}
+      onChange={e => setPaymentEnabled(e.currentTarget.checked)}
+    />
+  );
+
+  const actionButtons = (
+    <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+      <Button size="xs" onClick={() => handleSave(returnToRead)} loading={saving} disabled={saveDisabled}>
+        Save
+      </Button>
+      <Button size="xs" variant="light" onClick={() => history.back()}>
+        Cancel
+      </Button>
+    </Group>
+  );
+
   return (
-    <Stack gap="md">
+    <Stack gap="md" style={{ maxWidth: 1200, marginInline: 'auto' }}>
       <Paper shadow="xs" p="sm" radius="md">
-        <Group gap="sm" wrap="wrap" align="center">
-          <TextInput
-            placeholder="Configuration identifier (e.g., acme-documents)"
-            value={identifier}
-            onChange={e => setIdentifier(e.currentTarget.value)}
-            size="xs"
-            required
-            style={{ flex: '1 1 180px', maxWidth: 280 }}
-          />
-
-          <PdfDropzone
-            file={file}
-            label="Select or drop PDF"
-            onFileSelect={f => {
-              setFile(f);
-              setSelectedRectId(null);
-              setCurrentPage(1);
-            }}
-          />
-
-          <Checkbox
-            size="xs"
-            label="Payment order (Pain.001)"
-            checked={paymentEnabled}
-            onChange={e => setPaymentEnabled(e.currentTarget.checked)}
-          />
-
-          <Group gap="xs">
-            <Button size="xs" onClick={handleSave} loading={saving} disabled={
-              rects.length === 0 || !identifier.trim() || rects.some(r => !r.key.trim()) ||
-              (paymentEnabled && (
-                !payerName.trim() || !payerIban.trim() || !payerBic.trim() ||
-                !fieldMappings.beneficiaryName || !fieldMappings.beneficiaryIban ||
-                !fieldMappings.amount || !fieldMappings.paymentDescription || !fieldMappings.dueDate
-              ))
-            }>
-              {editConfigId ? 'Update' : 'Save'}
-            </Button>
-            <Button size="xs" variant="light" onClick={onDone}>
-              Cancel
-            </Button>
+        {isSmall ? (
+          <Stack gap="sm">
+            <Group gap="sm" wrap="nowrap">
+              {backButton}
+              {pdfDropzone}
+              {nameInput}
+            </Group>
+            <Group gap="sm" justify="space-between">
+              {paymentCheckbox}
+              {actionButtons}
+            </Group>
+          </Stack>
+        ) : (
+          <Group gap="sm" wrap="nowrap" align="center" justify="space-between">
+            <Group gap="sm" wrap="nowrap" align="center" style={{ flex: 1, minWidth: 0 }}>
+              {backButton}
+              {pdfDropzone}
+              {nameInput}
+              {paymentCheckbox}
+            </Group>
+            {actionButtons}
           </Group>
-        </Group>
+        )}
       </Paper>
 
       {error && (
@@ -256,9 +321,9 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
             Areas ({rects.length})
           </Text>
 
-          {rects.length === 0 && (
+          {file && rects.length === 0 && (
             <Text size="sm" c="dimmed">
-              {file ? 'Draw rectangles on the PDF to define reading areas.' : 'Select a PDF to start defining areas.'}
+              Draw rectangles on the PDF to define reading areas.
             </Text>
           )}
 
@@ -281,7 +346,7 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
                 <Group justify="space-between" wrap="nowrap" mb={4}>
                   <TextInput
                     size="xs"
-                    placeholder="Key (e.g., document_number)"
+                    placeholder="Label (e.g., document_number)"
                     value={r.key}
                     onChange={e => handleKeyChange(r.id, e.currentTarget.value)}
                     onClick={e => e.stopPropagation()}
@@ -332,6 +397,19 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
           </Paper>
         )}
 
+        {!file && (
+          <Paper shadow="xs" p="md" radius="md" style={{
+            flex: 1,
+            minWidth: 0,
+            width: isSmall ? '100%' : undefined,
+            order: isSmall ? 1 : 0,
+          }}>
+            <Text size="sm" c="dimmed">
+              Select a PDF to preview the document and draw new areas.
+            </Text>
+          </Paper>
+        )}
+
         {file && (
           <Paper shadow="xs" p="sm" radius="md" style={{
             flex: 1,
@@ -357,6 +435,26 @@ export function ConfigureFlow({ editConfigId, onDone }: Props) {
           </Paper>
         )}
       </div>
+
+      <Modal
+        opened={!!overwriteTarget}
+        onClose={() => setOverwriteTarget(null)}
+        title="Overwrite existing template?"
+        centered
+        size="sm"
+      >
+        <Text size="sm" mb="md">
+          A template named "{overwriteTarget?.name}" already exists. Do you want to overwrite it?
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button size="xs" variant="light" onClick={() => setOverwriteTarget(null)}>
+            Cancel
+          </Button>
+          <Button size="xs" color="orange" onClick={() => executeSave(true)}>
+            Overwrite
+          </Button>
+        </Group>
+      </Modal>
     </Stack>
   );
 }

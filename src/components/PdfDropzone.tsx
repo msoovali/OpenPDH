@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Group, Text, Button, CloseButton } from '@mantine/core';
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
+import { IconFileUpload } from '@tabler/icons-react';
 import '@mantine/dropzone/styles.css';
 
 interface Props {
@@ -54,14 +55,25 @@ export function PdfDropzone({ file, onFileSelect, label }: Props) {
       accept={[MIME_TYPES.pdf]}
       maxFiles={1}
       multiple={false}
-      py={4}
+      py={6}
       px="sm"
       radius="sm"
-      style={{ flex: '1 1 160px', maxWidth: 240, cursor: 'pointer' }}
+      style={{
+        flex: '1 1 160px',
+        maxWidth: 260,
+        cursor: 'pointer',
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: 'var(--mantine-color-blue-4)',
+        backgroundColor: 'var(--mantine-color-blue-0)',
+      }}
     >
-      <Text size="xs" ta="center" c="dimmed" style={{ pointerEvents: 'none' }}>
-        {label ?? 'Select or drop PDF'}
-      </Text>
+      <Group gap={6} justify="center" style={{ pointerEvents: 'none' }}>
+        <IconFileUpload size={18} color="var(--mantine-color-blue-6)" />
+        <Text size="xs" fw={500} c="blue.6">
+          {label ?? 'Select or drop PDF'}
+        </Text>
+      </Group>
     </Dropzone>
   );
 }

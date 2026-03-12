@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AppShell, Group, Button, Text, Modal, Stack, Anchor, ActionIcon } from '@mantine/core';
+import { AppShell, Group, Text, Modal, Stack, Anchor, ActionIcon } from '@mantine/core';
 import type { ReactNode } from 'react';
 import type { View } from '../App';
 
@@ -9,7 +9,7 @@ interface Props {
   onNavigate: (view: View) => void;
 }
 
-export function Layout({ children, currentView, onNavigate }: Props) {
+export function Layout({ children, onNavigate }: Props) {
   const [contactOpen, setContactOpen] = useState(false);
 
   return (
@@ -20,24 +20,9 @@ export function Layout({ children, currentView, onNavigate }: Props) {
             src="/OPENPDH_HEADER.png"
             alt="OpenPDH"
             style={{ height: 36, cursor: 'pointer', flexShrink: 0 }}
-            onClick={() => onNavigate('read')}
+            onClick={() => onNavigate('configs')}
           />
-          <Group gap="xs" wrap="nowrap">
-            <Button
-              size="sm"
-              variant={currentView === 'read' ? 'filled' : 'light'}
-              onClick={() => onNavigate('read')}
-            >
-              Read document
-            </Button>
-            <Button
-              size="sm"
-              variant={currentView === 'configs' || currentView === 'configure' ? 'filled' : 'light'}
-              onClick={() => onNavigate('configs')}
-            >
-              Configurations
-            </Button>
-          </Group>
+          <div />
         </Group>
       </AppShell.Header>
 
