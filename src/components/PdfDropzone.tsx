@@ -81,7 +81,7 @@ export function PdfDropzone(props: Props) {
           borderWidth: 2,
           borderStyle: 'dashed',
           borderColor: 'var(--mantine-color-blue-4)',
-          backgroundColor: 'var(--mantine-color-blue-0)',
+          backgroundColor: 'light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6))',
         }}
       >
         <Group gap={6} justify="center" style={{ pointerEvents: 'none' }}>
@@ -149,7 +149,7 @@ export function PdfDropzone(props: Props) {
         borderWidth: 2,
         borderStyle: 'dashed',
         borderColor: 'var(--mantine-color-blue-4)',
-        backgroundColor: 'var(--mantine-color-blue-0)',
+        backgroundColor: 'light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6))',
       }}
     >
       <Group gap={6} justify="center" style={{ pointerEvents: 'none' }}>
