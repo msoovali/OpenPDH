@@ -77,15 +77,16 @@ export function ConfigList({ onEdit, onNew, onRead }: Props) {
         accept="application/json,.json"
         style={{ display: 'none' }}
         onChange={handleImport}
+        aria-label="Import templates from file"
       />
 
       {error && (
-        <Notification color="red" onClose={() => setError(null)}>
+        <Notification color="red" onClose={() => setError(null)} role="alert">
           {error}
         </Notification>
       )}
       {success && (
-        <Notification color="green" onClose={() => setSuccess(null)}>
+        <Notification color="green" onClose={() => setSuccess(null)} role="status">
           {success}
         </Notification>
       )}
@@ -104,21 +105,22 @@ export function ConfigList({ onEdit, onNew, onRead }: Props) {
         )}
         <Stack gap="xs">
           {configs.map(c => (
-              <Card key={c.id} withBorder padding="xs" radius="sm" className="template-card" style={{ cursor: 'pointer', transition: 'background-color 150ms ease' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--mantine-color-blue-light)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = ''} onClick={() => onRead(c.id)}>
+              <Card key={c.id} withBorder padding="xs" radius="sm" className="template-card" role="button" tabIndex={0} aria-label={`Open template ${c.identifier}`} style={{ cursor: 'pointer', transition: 'background-color 150ms ease' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--mantine-color-blue-light)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = ''} onClick={() => onRead(c.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRead(c.id); } }}>
                 <Group justify="space-between" wrap="nowrap">
                   <Group gap="xs" wrap="nowrap">
                     <Text size="sm" fw={500}>{c.identifier}</Text>
                     <IconChevronRight size={16} style={{ color: 'var(--mantine-color-blue-5)', flexShrink: 0 }} />
                   </Group>
                   <Group gap={6}>
-                    <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(c.id); }} title="Edit">
+                    <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(c.id); }} aria-label={`Edit template ${c.identifier}`}>
                       <IconPencil size={14} />
                     </ActionIcon>
-                    <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleExport(c.id, c.identifier); }} title="Export">
+                    <ActionIcon variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleExport(c.id, c.identifier); }} aria-label={`Export template ${c.identifier}`}>
                       <IconDownload size={14} />
                     </ActionIcon>
                     <CloseButton
                       size="sm"
+                      aria-label={`Delete template ${c.identifier}`}
                       onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: c.id, identifier: c.identifier }); }}
                     />
                   </Group>

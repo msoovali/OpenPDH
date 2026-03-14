@@ -44,6 +44,7 @@ export function PdfDropzone(props: Props) {
             accept="application/pdf"
             multiple
             style={{ display: 'none' }}
+            aria-label="Add more PDF files"
             onChange={(e) => {
               if (e.target.files) addFiles(Array.from(e.target.files));
               e.target.value = '';
@@ -60,7 +61,7 @@ export function PdfDropzone(props: Props) {
             <Button size="compact-xs" variant="subtle" onClick={() => inputRef.current?.click()}>
               Add more
             </Button>
-            <CloseButton size="xs" onClick={() => onFilesChange([])} />
+            <CloseButton size="xs" aria-label="Remove all files" onClick={() => onFilesChange([])} />
           </Group>
         </>
       );
@@ -105,6 +106,7 @@ export function PdfDropzone(props: Props) {
           type="file"
           accept="application/pdf"
           style={{ display: 'none' }}
+          aria-label="Change PDF file"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) onFileSelect(f);
@@ -125,7 +127,7 @@ export function PdfDropzone(props: Props) {
           <Button size="compact-xs" variant="subtle" onClick={() => inputRef.current?.click()}>
             Change
           </Button>
-          <CloseButton size="xs" onClick={() => onFileSelect(null)} />
+          <CloseButton size="xs" aria-label="Remove file" onClick={() => onFileSelect(null)} />
         </Group>
       </>
     );
