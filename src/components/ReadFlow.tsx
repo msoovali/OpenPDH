@@ -209,7 +209,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
         {isSmall ? (
           <Stack gap="sm">
             <Group gap="sm" wrap="nowrap">
-              <ActionIcon variant="subtle" size="sm" onClick={() => history.back()} title="Back" style={{ flexShrink: 0 }}>
+              <ActionIcon variant="subtle" size="sm" onClick={() => history.back()} aria-label="Go back" style={{ flexShrink: 0 }}>
                 <IconArrowLeft size={16} />
               </ActionIcon>
               <PdfDropzone
@@ -220,6 +220,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
               />
               <Select
                 placeholder="Choose template"
+                aria-label="Select extraction template"
                 data={configs.map(c => ({ value: c.id, label: c.identifier }))}
                 value={selectedConfigId}
                 onChange={setSelectedConfigId}
@@ -245,7 +246,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
         ) : (
           <Group gap="sm" wrap="nowrap" align="center" justify="space-between">
             <Group gap="sm" wrap="nowrap" align="center" style={{ flex: 1, minWidth: 0 }}>
-              <ActionIcon variant="subtle" size="sm" onClick={() => history.back()} title="Back" style={{ flexShrink: 0 }}>
+              <ActionIcon variant="subtle" size="sm" onClick={() => history.back()} aria-label="Go back" style={{ flexShrink: 0 }}>
                 <IconArrowLeft size={16} />
               </ActionIcon>
               <PdfDropzone
@@ -256,6 +257,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
               />
               <Select
                 placeholder="Choose template"
+                aria-label="Select extraction template"
                 data={configs.map(c => ({ value: c.id, label: c.identifier }))}
                 value={selectedConfigId}
                 onChange={setSelectedConfigId}
@@ -302,7 +304,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
       )}
 
       {error && (
-        <Notification color="red" onClose={() => setError(null)}>
+        <Notification color="red" onClose={() => setError(null)} role="alert">
           {error}
         </Notification>
       )}
@@ -312,7 +314,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
           <Text size="xs" c="dimmed" mb={4}>
             Extracting {progress.done} / {progress.total}...
           </Text>
-          <Progress value={(progress.done / progress.total) * 100} size="sm" animated />
+          <Progress value={(progress.done / progress.total) * 100} size="sm" animated aria-label={`Extraction progress: ${progress.done} of ${progress.total} files`} />
         </Paper>
       )}
 
@@ -337,20 +339,20 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
                   </Text>
                   {errorCount > 0 && (
                     <Tooltip label={`${errorCount} file${errorCount !== 1 ? 's' : ''} with empty or unreadable values`} withArrow>
-                      <IconAlertTriangle size={16} color="var(--mantine-color-orange-6)" style={{ flexShrink: 0 }} />
+                      <IconAlertTriangle size={16} color="var(--mantine-color-orange-6)" style={{ flexShrink: 0 }} aria-label={`Warning: ${errorCount} file${errorCount !== 1 ? 's' : ''} with errors`} />
                     </Tooltip>
                   )}
                 </Group>
                 <Group gap="xs" align="center">
                   <Text size="xs" c="dimmed">Download</Text>
-                  <Button size="compact-xs" variant="light" onClick={handleDownloadCsv}>
+                  <Button size="compact-xs" variant="light" onClick={handleDownloadCsv} aria-label="Download as CSV">
                     CSV
                   </Button>
-                  <Button size="compact-xs" variant="light" onClick={handleDownloadJson}>
+                  <Button size="compact-xs" variant="light" onClick={handleDownloadJson} aria-label="Download as JSON">
                     JSON
                   </Button>
                   {selectedConfig?.paymentOrder && (
-                    <Button size="compact-xs" variant="light" color="teal" onClick={handleDownloadXml}>
+                    <Button size="compact-xs" variant="light" color="teal" onClick={handleDownloadXml} aria-label="Download as Pain.001 XML">
                       XML
                     </Button>
                   )}
@@ -358,7 +360,7 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
               </Group>
               <Group gap="xs" align="center" justify="flex-end" mb="xs">
                 <Text size="xs" c="dimmed">View as</Text>
-                <Button size="compact-xs" variant="light" onClick={() => setTableModalOpen(true)}>
+                <Button size="compact-xs" variant="light" onClick={() => setTableModalOpen(true)} aria-label="View extracted data as table">
                   Table
                 </Button>
               </Group>
@@ -410,10 +412,10 @@ export function ReadFlow({ initialConfigId, onEditTemplate, onCloneEditTemplate 
                           <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
                             <div style={statusDotStyle(
                               !fr ? undefined : (fr.error || hasExtractionError(fr.data)) ? 'error' : 'ok'
-                            )} />
+                            )} role="status" aria-label={`Status: ${!fr ? 'pending' : (fr.error || hasExtractionError(fr.data)) ? 'error' : 'ok'}`} />
                             <Text size="xs" truncate style={{ flex: 1, minWidth: 0 }}>{f.name}</Text>
                           </Group>
-                          <CloseButton size="xs" onClick={(e) => { e.stopPropagation(); removeFile(i); }} />
+                          <CloseButton size="xs" aria-label={`Remove file ${f.name}`} onClick={(e) => { e.stopPropagation(); removeFile(i); }} />
                         </Group>
                         {fr?.error && <Text size="xs" c="red" mt={2}>{fr.error}</Text>}
                       </Card>

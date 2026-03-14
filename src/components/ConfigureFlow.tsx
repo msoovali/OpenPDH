@@ -318,7 +318,7 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, returnToRead, o
   };
 
   const backButton = (
-    <ActionIcon variant="subtle" size="sm" onClick={handleCancel} title="Back" style={{ flexShrink: 0 }}>
+    <ActionIcon variant="subtle" size="sm" onClick={handleCancel} aria-label="Go back" style={{ flexShrink: 0 }}>
       <IconArrowLeft size={16} />
     </ActionIcon>
   );
@@ -330,6 +330,7 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, returnToRead, o
   const nameInput = (
     <TextInput
       placeholder="Template name"
+      aria-label="Template name"
       value={identifier}
       onChange={e => setIdentifier(e.currentTarget.value)}
       size="xs"
@@ -387,7 +388,7 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, returnToRead, o
       </Paper>
 
       {error && (
-        <Notification color="red" onClose={() => setError(null)}>
+        <Notification color="red" onClose={() => setError(null)} role="alert">
           {error}
         </Notification>
       )}
@@ -442,6 +443,7 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, returnToRead, o
                     <TextInput
                       size="xs"
                       placeholder="Label (e.g., document_number)"
+                      aria-label="Area label"
                       value={r.key}
                       onChange={e => handleKeyChange(r.id, e.currentTarget.value)}
                       onClick={e => e.stopPropagation()}
@@ -449,6 +451,7 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, returnToRead, o
                     />
                     <CloseButton
                       size="sm"
+                      aria-label={`Delete area ${r.key || 'unnamed'}`}
                       onClick={e => {
                         e.stopPropagation();
                         handleDeleteRect(r.id);
@@ -533,10 +536,10 @@ export function ConfigureFlow({ editConfigId, cloneFromConfigId, returnToRead, o
                   >
                     <Group justify="space-between" wrap="nowrap" gap={6}>
                       <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                        <div style={statusDotStyle(fileStatus.get(fileKey(f)))} />
+                        <div style={statusDotStyle(fileStatus.get(fileKey(f)))} role="status" aria-label={`Validation: ${fileStatus.get(fileKey(f)) ?? 'not checked'}`} />
                         <Text size="xs" truncate style={{ flex: 1, minWidth: 0 }}>{f.name}</Text>
                       </Group>
-                      <CloseButton size="xs" onClick={(e) => {
+                      <CloseButton size="xs" aria-label={`Remove file ${f.name}`} onClick={(e) => {
                         e.stopPropagation();
                         const next = files.filter((_, j) => j !== i);
                         setFiles(next);

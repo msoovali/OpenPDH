@@ -140,24 +140,26 @@ export function PdfViewer({
 
   return (
     <div>
-      <Group justify="center" mb="sm">
-        <ActionIcon variant="light" disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)}>
-          &lt;
-        </ActionIcon>
-        <Text size="sm">
-          Page {currentPage} / {totalPages}
-        </Text>
-        <ActionIcon variant="light" disabled={currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)}>
-          &gt;
-        </ActionIcon>
-        <ActionIcon variant="light" onClick={() => setRotation(r => (r + 90) % 360)} title="Rotate">
-          ↻
-        </ActionIcon>
-      </Group>
+      <nav aria-label="PDF page navigation">
+        <Group justify="center" mb="sm">
+          <ActionIcon variant="light" disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} aria-label="Previous page">
+            &lt;
+          </ActionIcon>
+          <Text size="sm" aria-live="polite">
+            Page {currentPage} / {totalPages}
+          </Text>
+          <ActionIcon variant="light" disabled={currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)} aria-label="Next page">
+            &gt;
+          </ActionIcon>
+          <ActionIcon variant="light" onClick={() => setRotation(r => (r + 90) % 360)} aria-label="Rotate page">
+            ↻
+          </ActionIcon>
+        </Group>
+      </nav>
       <div
         style={{ position: 'relative', display: 'inline-block', cursor: 'crosshair', userSelect: 'none' }}
       >
-        <canvas ref={canvasRef} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} />
+        <canvas ref={canvasRef} style={{ display: 'block', maxWidth: '100%', height: 'auto' }} role="img" aria-label={`PDF document page ${currentPage} of ${totalPages}`} />
         <div
           ref={overlayRef}
           style={{
@@ -177,9 +179,19 @@ export function PdfViewer({
             <div
               key={r.id}
               data-rect-id={r.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Reading area: ${r.key || 'unnamed'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 onRectClick?.(r);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRectClick?.(r);
+                }
               }}
               style={{
                 position: 'absolute',
